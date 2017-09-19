@@ -1,0 +1,50 @@
+---
+# tasks file for update-everything
+# Debian doesn't have sudo out of the box,
+# so install it prior to running sudo commands.
+- include: Debian_sudo.yml
+  when: ansible_distribution == 'Debian' or
+        ansible_user_uid == 1
+
+- name: Update apt cache.
+  become: yes
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install aptitude.
+  become: yes
+  apt:
+    name: aptitude
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_os_family == 'Debian'
+
+- name: Perform aptitude safe-upgrade.
+  become:  yes
+  apt:
+    upgrade: safe
+    update_cache: yes
+    cache_valid_time: 3600
+  tags:
+    - apt-upgrade
+    - safe-upgrade
+
+- name: Remove unneeded packages.
+  become:  yes
+  command: apt-get autoremove -y
+  register: autoremove_result
+  changed_when: "'0 upgraded' not in autoremove_result.stdout"
+  tags:
+    - apt
+    - autoremove
+
+- name: Clean the apt cache.
+  become: yes
+  command: apt-get autoclean
+  register: autoclean_result
+  changed_when: "'Del' in autoclean_result.stdout"
+  tags:
+    - apt
+    - autoclean
